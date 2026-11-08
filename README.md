@@ -7,7 +7,7 @@
 <h1 align="center">Alvaindes SDK</h1>
 
 <p align="center">
- Official Go SDK for integrating with the Alvaindes brokerage infrastructure API.
+  Official Go SDK for integrating with the Alvaindes brokerage infrastructure API.
 </p>
 
 <p align="center">
@@ -68,12 +68,23 @@ func main() {
 
 	ctx := context.Background()
 
-	_ = ctx
-	_ = client
+	quote, err := client.MarketData.GetQuote(ctx, "AAPL")
+	if err != nil {
+		log.Fatalf("get market quote: %v", err)
+	}
 
-	fmt.Println("Alvaindes client initialized")
+	fmt.Printf("Symbol: %s\n", quote.Symbol)
+	fmt.Printf("Price: %v\n", quote.Price)
 }
 ```
+
+Set your API key before running the application:
+
+```bash
+export ALVAINDES_API_KEY="your_api_key"
+```
+
+The `BaseURL` must be an HTTP or HTTPS origin. Do not append `/v1` or an endpoint path to it.
 
 ### Configuration
 
@@ -86,7 +97,7 @@ func main() {
 | `Timeout`    | `time.Duration` | HTTP request timeout. Defaults to 30 seconds when omitted. |
 | `HTTPClient` | `*http.Client`  | Optional custom HTTP client.                               |
 
-The `BaseURL` must be an HTTP or HTTPS origin. Do not append `/v1` or an endpoint path to it.
+If you configure a custom HTTP client, import `net/http`.
 
 For example:
 
@@ -100,7 +111,7 @@ if err != nil {
 }
 ```
 
-The default request timeout is 30 seconds. You can provide a different positive timeout using `time.Duration`.
+The default request timeout is 30 seconds. You can provide a different positive timeout using `time.Duration`. Configured timeouts must be positive whole numbers of milliseconds.
 
 Keep API keys on trusted server-side infrastructure. Do not expose secret API keys in browser code, mobile applications, public repositories, or client-side bundles.
 
@@ -130,6 +141,8 @@ All resource methods accept a `context.Context` so requests can be cancelled or 
 ## Usage examples
 
 The examples below assume that `client` has already been initialized and that the required IDs and context are available.
+
+The snippets are intended to be used inside a Go function that can return an `error`, unless a complete program is shown.
 
 ### 1. Users
 
@@ -171,6 +184,11 @@ user, err := client.Users.Create(
 		Country:     "NG",
 	},
 )
+if err != nil {
+	return err
+}
+
+fmt.Println("Created user:", user.ID)
 ```
 
 Retrieve a user:
@@ -299,6 +317,8 @@ kyc, err := client.KYC.Update(
 if err != nil {
 	return err
 }
+
+fmt.Println("Updated KYC:", kyc.ID, kyc.Status)
 ```
 
 `UpdateKycParams` supports partial updates. Only fields supplied with non-nil pointers are included in the request.
@@ -380,6 +400,8 @@ fundingSource, err := client.FundingSources.Refresh(
 if err != nil {
 	return err
 }
+
+fmt.Println("Funding source status:", fundingSource.Status)
 ```
 
 Disable a funding source:
@@ -394,17 +416,19 @@ fundingSource, err := client.FundingSources.Disable(
 if err != nil {
 	return err
 }
+
+fmt.Println("Funding source status:", fundingSource.Status)
 ```
 
 Funding-source types and statuses are represented by:
 
-- `FundingSourceACH`
-- `FundingSourceBankAccount`
-- `FundingSourceWire`
-- `FundingSourceOther`
-- `FundingSourcePending`
-- `FundingSourceActive`
-- `FundingSourceDisabled`
+- `alvaindes.FundingSourceACH`
+- `alvaindes.FundingSourceBankAccount`
+- `alvaindes.FundingSourceWire`
+- `alvaindes.FundingSourceOther`
+- `alvaindes.FundingSourcePending`
+- `alvaindes.FundingSourceActive`
+- `alvaindes.FundingSourceDisabled`
 
 The presence of a type constant does not mean that creation through the SDK is currently supported for that type.
 
@@ -501,6 +525,8 @@ order, err := client.Orders.Create(
 if err != nil {
 	return err
 }
+
+fmt.Println("Limit order ID:", order.ID)
 ```
 
 Order sides:
@@ -594,6 +620,8 @@ deposit, err := client.Deposits.Create(
 if err != nil {
 	return err
 }
+
+fmt.Println("Deposit ID:", deposit.ID)
 ```
 
 When `FundingSourceID` is omitted, the API may resolve an eligible funding source according to its funding-source selection rules.
@@ -644,6 +672,8 @@ withdrawal, err := client.Withdrawals.Create(
 if err != nil {
 	return err
 }
+
+fmt.Println("Withdrawal ID:", withdrawal.ID)
 ```
 
 Withdrawals are subject to the API's account, available-cash, and funding validations.
@@ -731,6 +761,8 @@ agreement, err := client.BrokerAgreements.Accept(
 if err != nil {
 	return err
 }
+
+fmt.Println("Accepted agreement:", agreement.Agreement)
 ```
 
 List accepted agreements:
@@ -867,7 +899,6 @@ func handleRequestError(err error) {
 	}
 
 	var apiErr *alvaindes.AlvaindesError
-
 	if errors.As(err, &apiErr) {
 		fmt.Println("API error:", apiErr.Message)
 		fmt.Println("HTTP status:", apiErr.Status)
@@ -926,6 +957,15 @@ if err != nil {
 fmt.Println(user.ID)
 ```
 
+This example requires the `context` and `time` packages:
+
+```go
+import (
+	"context"
+	"time"
+)
+```
+
 You can also cancel requests using a cancellable context.
 
 The configured client timeout and context deadline both apply to requests.
@@ -949,6 +989,8 @@ err := client.Request(
 if err != nil {
 	return err
 }
+
+fmt.Println(result)
 ```
 
 ### RequestWithOptions
@@ -974,6 +1016,14 @@ err := client.RequestWithOptions(
 if err != nil {
 	return err
 }
+
+fmt.Println(result)
+```
+
+The `RequestWithOptions` example requires the `net/http` package:
+
+```go
+import "net/http"
 ```
 
 For requests with a JSON body, provide the request body as the fourth argument and a result pointer as the fifth argument.
